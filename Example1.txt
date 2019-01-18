@@ -33,16 +33,16 @@ ZCLASS1:
   METHOD IF_OO_ADT_CLASSRUN~MAIN.
     DATA:data1 TYPE TABLE OF ZTDATA1.
     data1 = VALUE #(
-        (id='1' personname='Bob'    amount='456.78' currencycode='GBP')
-        (id='2' personname='Denys'  amount='321.98' currencycode='EUR')
-        (id='3' personname='Jamie'  amount='123.45' currencycode='CAD')
-        (id='4' personname='Joe'    amount='275.26' currencycode='USD')
-        (id='5' personname='Julie'  amount='654.32' currencycode='USD')
-        (id='6' personname='Philip' amount='418.80' currencycode='EUR')
+        ( id = '1' personname = 'Bob'    amount = '456.78' currencycode = 'GBP' )
+        ( id = '2' personname = 'Denys'  amount = '321.98' currencycode = 'EUR' )
+        ( id = '3' personname = 'Jamie'  amount = '123.45' currencycode = 'CAD' )
+        ( id = '4' personname = 'Joe'    amount = '275.26' currencycode = 'USD' )
+        ( id = '5' personname = 'Julie'  amount = '654.32' currencycode = 'USD' )
+        ( id = '6' personname = 'Philip' amount = '418.80' currencycode = 'EUR' )
     ).
     DELETE FROM ZTDATA1.
     INSERT ZTDATA1 FROM TABLE @data1.
-    out->write(sy-dbcnt).
+    out->write( sy-dbcnt ).
   ENDMETHOD.
 
 
