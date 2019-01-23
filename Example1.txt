@@ -46,14 +46,14 @@ ZCLASS1:
   ENDMETHOD.
 
 
-ZVDATA1:
+ZIDATA1:
 -------
 
 @AbapCatalog.sqlViewName: 'ZVDATA1'
 @AbapCatalog.compiler.compareFilter: true
 @AbapCatalog.preserveKey: true
 @AccessControl.authorizationCheck: #CHECK
-@EndUserText.label: 'Define View'
+@EndUserText.label: 'Database Definition 1'
 
 define view ZIDATA1 as select from ZTDATA1 as Data1
    association [0..1] to I_Currency as _Currency on $projection.currencyCode = _Currency.Currency
