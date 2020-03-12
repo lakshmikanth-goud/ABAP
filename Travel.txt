@@ -1,0 +1,546 @@
+ABAP Package: ZTRAVEL_APP_XXX
+-----------------------------
+
+
+
+Database Table: ZTRAVEL_XXX
+---------------------------
+
+@EndUserText.label : 'Database Table - Travel'
+@AbapCatalog.enhancementCategory : #NOT_EXTENSIBLE
+@AbapCatalog.tableCategory : #TRANSPARENT
+@AbapCatalog.deliveryClass : #A
+@AbapCatalog.dataMaintenance : #LIMITED
+define table ztravel_XXX {
+  key client      : abap.clnt not null;
+  key mykey       : sysuuid_x16 not null;
+  travel_id       : /dmo/travel_id;
+  agency_id       : /dmo/agency_id;
+  customer_id     : /dmo/customer_id;
+  begin_date      : /dmo/begin_date;
+  end_date        : /dmo/end_date;
+  @Semantics.amount.currencyCode : 'ztravel_XXX.currency_code'
+  booking_fee     : /dmo/booking_fee;
+  @Semantics.amount.currencyCode : 'ztravel_XXX.currency_code'
+  total_price     : /dmo/total_price;
+  currency_code   : /dmo/currency_code;
+  description     : /dmo/description;
+  overall_status  : /dmo/overall_status;
+  created_by      : syuname;
+  created_at      : timestampl;
+  last_changed_by : syuname;
+  last_changed_at : timestampl;
+
+}
+
+
+
+ABAP Class: ZCL_GENERATE_TRAVEL_DATA_XXX
+----------------------------------------
+
+CLASS zcl_generate_travel_data_XXX DEFINITION
+  PUBLIC
+  FINAL
+  CREATE PUBLIC .
+
+  PUBLIC SECTION.
+    INTERFACES if_oo_adt_classrun.
+  PROTECTED SECTION.
+  PRIVATE SECTION.
+ENDCLASS.
+
+
+CLASS zcl_generate_travel_data_XXX IMPLEMENTATION.
+
+  METHOD if_oo_adt_classrun~main.
+    DATA:itab TYPE TABLE OF ztravel_XXX.
+
+*   read current timestamp
+    GET TIME STAMP FIELD DATA(zv_tsl).
+
+*   fill internal travel table (itab)
+    itab = VALUE #(
+  ( travel_id = '00000001' agency_id = '070010' customer_id = '000011' begin_date = '202XXX10' end_date = '202XXX17' booking_fee = '17.00' total_price = '800.00' currency_code = 'EUR'
+    description = 'Need a break!' overall_status = 'O' created_by = 'CB0000000007' created_at = '20200310105654.4296640' last_changed_by = 'CB0000000007' last_changed_at = '20200310111041.2251330' )
+ ).
+
+*   delete existing entries in the database table
+    DELETE FROM ztravel_XXX.
+
+*   insert the new table entries
+    INSERT ztravel_XXX FROM TABLE @itab.
+
+*   check the result
+    SELECT * FROM ztravel_XXX INTO TABLE @itab.
+    out->write( sy-dbcnt ).
+    out->write( 'Travel data inserted successfully!').
+
+  ENDMETHOD.
+
+ENDCLASS.
+
+
+
+Data Definition (Interface View): ZI_TRAVEL_XXX
+-----------------------------------------------
+
+@AbapCatalog.sqlViewName: 'ZVI_TRAVEL_XXX'
+@AbapCatalog.compiler.compareFilter: true
+@AbapCatalog.preserveKey: true
+@AccessControl.authorizationCheck: #CHECK
+@EndUserText.label: 'Interface View - Travel'
+define root view ZI_TRAVEL_XXX
+  as select from ztravel_XXX
+
+  association [0..1] to /DMO/I_Agency   as _Agency   on $projection.agency_id = _Agency.AgencyID
+  association [0..1] to /DMO/I_Customer as _Customer on $projection.customer_id = _Customer.CustomerID
+  association [0..1] to I_Currency      as _Currency on $projection.currency_code = _Currency.Currency
+
+{
+  key mykey,
+      travel_id,
+      agency_id,
+      customer_id,
+      begin_date,
+      end_date,
+      @Semantics.amount.currencyCode: 'currency_code'
+      booking_fee,
+      @Semantics.amount.currencyCode: 'currency_code'
+      total_price,
+      @Semantics.currencyCode: true
+      currency_code,
+      overall_status,
+      description,
+
+      /*-- Admin data --*/
+      @Semantics.user.createdBy: true
+      created_by,
+      @Semantics.systemDateTime.createdAt: true
+      created_at,
+      @Semantics.user.lastChangedBy: true
+      last_changed_by,
+      @Semantics.systemDateTime.lastChangedAt: true
+      last_changed_at,
+
+      /* Public associations */
+      _Agency,
+      _Customer,
+      _Currency
+}
+
+
+
+Data Definition (Projection View): ZC_TRAVEL_XXX
+------------------------------------------------
+
+@AccessControl.authorizationCheck: #CHECK
+@EndUserText.label: 'Projection View - Travel'
+
+@UI: {
+ headerInfo: { typeName: 'Travel', typeNamePlural: 'Travels', title: { type: #STANDARD, value: 'TravelID' } } }
+
+@Search.searchable: true
+define root view entity ZC_TRAVEL_XXX
+  as projection on ZI_TRAVEL_XXX
+{
+
+      @UI.facet: [ { id:              'Travel',
+                     purpose:         #STANDARD,
+                     type:            #IDENTIFICATION_REFERENCE,
+                     label:           'Travel',
+                     position:        10 } ]
+
+  key mykey              as TravelUUID,
+      @UI: {
+          lineItem:       [ { position: 10, importance: #HIGH } ],
+          identification: [ { position: 10, label: 'Travel ID [1,...,99999999]' } ] }
+      @Search.defaultSearchElement: true
+      travel_id          as TravelID,
+
+      @UI: {
+          lineItem:       [ { position: 20, importance: #HIGH } ],
+          identification: [ { position: 20 } ],
+          selectionField: [ { position: 20 } ] }
+      @Consumption.valueHelpDefinition: [{ entity : {name: '/DMO/I_Agency', element: 'AgencyID'  } }]
+
+      @ObjectModel.text.element: ['AgencyName']
+      @Search.defaultSearchElement: true
+      agency_id          as AgencyID,
+      _Agency.Name       as AgencyName,
+
+      @UI: {
+          lineItem:       [ { position: 30, importance: #HIGH } ],
+          identification: [ { position: 30 } ],
+          selectionField: [ { position: 30 } ] }
+      @Consumption.valueHelpDefinition: [{ entity : {name: '/DMO/I_Customer', element: 'CustomerID'  } }]
+
+      @ObjectModel.text.element: ['CustomerName']
+      @Search.defaultSearchElement: true
+      customer_id        as CustomerID,
+
+      @UI.hidden: true
+      _Customer.LastName as CustomerName,
+
+      @UI: {
+          lineItem:       [ { position: 40, importance: #MEDIUM } ],
+          identification: [ { position: 40 } ] }
+      begin_date         as BeginDate,
+
+      @UI: {
+          lineItem:       [ { position: 41, importance: #MEDIUM } ],
+          identification: [ { position: 41 } ] }
+      end_date           as EndDate,
+
+      @UI: {
+          lineItem:       [ { position: 50, importance: #MEDIUM } ],
+          identification: [ { position: 50, label: 'Total Price' } ] }
+      @Semantics.amount.currencyCode: 'CurrencyCode'
+      total_price        as TotalPrice,
+
+      @Consumption.valueHelpDefinition: [{entity: {name: 'I_Currency', element: 'Currency' }}]
+      currency_code      as CurrencyCode,
+
+      @UI: {
+            lineItem:       [ { position: 60, importance: #HIGH },
+                              { type: #FOR_ACTION, dataAction: 'acceptTravel', label: 'Accept Travel' } ],
+          identification: [ { position: 60, label: 'Status [O(Open)|A(Accepted)|X(Canceled)]' } ]  }
+      overall_status     as TravelStatus,
+
+      @UI.identification: [ { position: 70, label: 'Remarks' } ]
+      description        as Description,
+
+      @UI.hidden: true
+      last_changed_at    as LastChangedAt
+
+}
+
+
+
+Service Definition: ZSD_TRAVEL_XXX
+----------------------------------
+
+@EndUserText.label: 'Service Definition - Travel'
+define service ZSD_TRAVEL_XXX {
+  expose ZC_TRAVEL_XXX as TravelProcessor;
+  expose /DMO/I_Customer as Passenger;
+  expose /DMO/I_Agency as TravelAgency;
+  expose /DMO/I_Airport as Airport;
+  expose I_Currency as Currency;
+  expose I_Country as Country;
+}
+
+
+
+Service Binding: ZSB_TRAVEL_XXX
+-------------------------------
+
+
+
+Behavior Definition: ZI_TRAVEL_XXX
+----------------------------------
+
+managed implementation in class ZBP_I_TRAVEL_XXX unique;
+
+define behavior for ZI_TRAVEL_XXX alias Travel
+persistent table ztravel_XXX
+etag master last_changed_at
+lock master
+{
+  field ( readonly, numbering : managed ) mykey;
+  field ( readonly ) travel_id, last_changed_at, last_changed_by, created_at, created_by;
+  field ( mandatory ) agency_id, overall_status, booking_fee, currency_code;
+  create;
+  update;
+  delete;
+  determination CalculateTravelKey on modify { create; }
+}
+
+
+
+Behavior Implementation: ZBP_I_TRAVEL_XXX
+-----------------------------------------
+
+CLASS lhc_Travel DEFINITION INHERITING FROM cl_abap_behavior_handler.
+  PRIVATE SECTION.
+
+    TYPES tt_travel_update TYPE TABLE FOR UPDATE zi_travel_XXX.
+
+    METHODS CalculateTravelKey FOR DETERMINATION Travel~CalculateTravelKey
+      IMPORTING keys FOR Travel.
+
+ENDCLASS.
+
+CLASS lhc_Travel IMPLEMENTATION.
+
+  METHOD CalculateTravelKey.
+
+    SELECT FROM ztravel_XXX
+    FIELDS MAX( travel_id ) INTO @DATA(lv_max_travel_id).
+
+    LOOP AT keys INTO DATA(ls_key).
+      lv_max_travel_id = lv_max_travel_id + 1.
+      MODIFY ENTITIES OF zi_travel_XXX IN LOCAL MODE
+        ENTITY Travel
+          UPDATE SET FIELDS WITH VALUE #( ( mykey     = ls_key-mykey
+                                            travel_id = lv_max_travel_id ) )
+          REPORTED DATA(ls_reported).
+      APPEND LINES OF ls_reported-travel TO reported-travel.
+    ENDLOOP.
+
+  ENDMETHOD.
+
+ENDCLASS.
+
+
+
+Behavior Definition: ZC_TRAVEL_XXX
+----------------------------------
+
+projection;
+
+define behavior for ZC_TRAVEL_XXX alias TravelProcessor
+use etag
+{
+  // scenario specific field control
+  field ( mandatory ) BeginDate, EndDate, CustomerID;
+
+  use create;
+  use update;
+  use delete;
+}
+
+
+
+Behavior Definition: ZI_TRAVEL_XXX
+----------------------------------
+
+  // instance action and dynamic action control
+  action ( features : instance ) acceptTravel result [1] $self;
+  // validations
+  validation validateCustomer on save { field customer_id; }
+  validation validateDates on save { field begin_date, end_date; }
+  validation validateStatus on save { field overall_status; }
+
+
+
+Behavior Implementation: ZBP_I_TRAVEL_XXX
+-----------------------------------------
+
+CLASS lhc_Travel DEFINITION INHERITING FROM cl_abap_behavior_handler.
+  PRIVATE SECTION.
+
+    TYPES tt_travel_update TYPE TABLE FOR UPDATE zi_travel_XXX.
+
+    METHODS CalculateTravelKey FOR DETERMINATION Travel~CalculateTravelKey
+      IMPORTING keys FOR Travel.
+
+    METHODS validate_customer FOR VALIDATION Travel~validateCustomer IMPORTING keys FOR Travel.
+    METHODS validate_dates FOR VALIDATION Travel~validateDates IMPORTING keys FOR Travel.
+    METHODS validate_travel_status FOR VALIDATION Travel~validateStatus IMPORTING keys FOR Travel.
+    METHODS set_status_completed FOR MODIFY IMPORTING keys FOR ACTION Travel~acceptTravel RESULT result.
+    METHODS get_features FOR FEATURES IMPORTING keys REQUEST requested_features FOR travel RESULT result.
+
+ENDCLASS.
+
+CLASS lhc_Travel IMPLEMENTATION.
+
+  METHOD CalculateTravelKey.
+
+    SELECT FROM ztravel_XXX
+    FIELDS MAX( travel_id ) INTO @DATA(lv_max_travel_id).
+
+    LOOP AT keys INTO DATA(ls_key).
+      lv_max_travel_id = lv_max_travel_id + 1.
+      MODIFY ENTITIES OF zi_travel_XXX IN LOCAL MODE
+        ENTITY Travel
+          UPDATE SET FIELDS WITH VALUE #( ( mykey     = ls_key-mykey
+                                            travel_id = lv_max_travel_id ) )
+          REPORTED DATA(ls_reported).
+      APPEND LINES OF ls_reported-travel TO reported-travel.
+    ENDLOOP.
+
+  ENDMETHOD.
+
+  METHOD validate_customer.
+
+    READ ENTITY zi_travel_XXX\\travel FROM VALUE #(
+        FOR <root_key> IN keys ( %key     = <root_key>
+                                 %control = VALUE #( customer_id = if_abap_behv=>mk-on ) ) )
+        RESULT DATA(lt_travel).
+
+    DATA lt_customer TYPE SORTED TABLE OF /dmo/customer WITH UNIQUE KEY customer_id.
+
+    " Optimization of DB select: extract distinct non-initial customer IDs
+    lt_customer = CORRESPONDING #( lt_travel DISCARDING DUPLICATES MAPPING customer_id = customer_id EXCEPT * ).
+    DELETE lt_customer WHERE customer_id IS INITIAL.
+    CHECK lt_customer IS NOT INITIAL.
+
+    " Check if customer ID exist
+    SELECT FROM /dmo/customer FIELDS customer_id
+      FOR ALL ENTRIES IN @lt_customer
+      WHERE customer_id = @lt_customer-customer_id
+      INTO TABLE @DATA(lt_customer_db).
+
+    " Raise msg for non existing customer id
+    LOOP AT lt_travel INTO DATA(ls_travel).
+      IF ls_travel-customer_id IS NOT INITIAL AND NOT line_exists( lt_customer_db[ customer_id = ls_travel-customer_id ] ).
+        APPEND VALUE #(  mykey = ls_travel-mykey ) TO failed.
+        APPEND VALUE #(  mykey = ls_travel-mykey
+                         %msg  = new_message( id       = /dmo/cx_flight_legacy=>customer_unkown-msgid
+                                              number   = /dmo/cx_flight_legacy=>customer_unkown-msgno
+                                              v1       = ls_travel-customer_id
+                                              severity = if_abap_behv_message=>severity-error )
+                         %element-customer_id = if_abap_behv=>mk-on ) TO reported.
+      ENDIF.
+
+    ENDLOOP.
+
+  ENDMETHOD.
+
+  METHOD validate_dates.
+
+    READ ENTITY zi_travel_XXX\\travel FROM VALUE #(
+        FOR <root_key> IN keys ( %key     = <root_key>
+                                 %control = VALUE #( begin_date = if_abap_behv=>mk-on
+                                                     end_date   = if_abap_behv=>mk-on ) ) )
+        RESULT DATA(lt_travel_result).
+
+    LOOP AT lt_travel_result INTO DATA(ls_travel_result).
+
+      IF ls_travel_result-end_date < ls_travel_result-begin_date.  "end_date before begin_date
+
+        APPEND VALUE #( %key  = ls_travel_result-%key
+                        mykey = ls_travel_result-mykey ) TO failed.
+
+        APPEND VALUE #( %key  = ls_travel_result-%key
+                        %msg  = new_message( id       = /dmo/cx_flight_legacy=>end_date_before_begin_date-msgid
+                                             number   = /dmo/cx_flight_legacy=>end_date_before_begin_date-msgno
+                                             v1       = ls_travel_result-begin_date
+                                             v2       = ls_travel_result-end_date
+                                             v3       = ls_travel_result-mykey
+                                             severity = if_abap_behv_message=>severity-error )
+                        %element-begin_date = if_abap_behv=>mk-on
+                        %element-end_date   = if_abap_behv=>mk-on ) TO reported.
+
+      ELSEIF ls_travel_result-begin_date < cl_abap_context_info=>get_system_date( ).  "begin_date must be in the future
+
+        APPEND VALUE #( %key = ls_travel_result-%key
+                        mykey = ls_travel_result-mykey ) TO failed.
+
+        APPEND VALUE #( %key = ls_travel_result-%key
+                        %msg = new_message( id       = /dmo/cx_flight_legacy=>begin_date_before_system_date-msgid
+                                            number   = /dmo/cx_flight_legacy=>begin_date_before_system_date-msgno
+                                            severity = if_abap_behv_message=>severity-error )
+                        %element-begin_date = if_abap_behv=>mk-on
+                        %element-end_date   = if_abap_behv=>mk-on ) TO reported.
+      ENDIF.
+
+    ENDLOOP.
+
+  ENDMETHOD.
+
+  METHOD validate_travel_status.
+
+    READ ENTITY zi_travel_XXX\\travel FROM VALUE #(
+      FOR <root_key> IN keys ( %key     = <root_key>
+                               %control = VALUE #( overall_status = if_abap_behv=>mk-on ) ) )
+      RESULT DATA(lt_travel_result).
+
+    LOOP AT lt_travel_result INTO DATA(ls_travel_result).
+      CASE ls_travel_result-overall_status.
+        WHEN 'O'.  " Open
+        WHEN 'X'.  " Cancelled or rejected
+        WHEN 'A'.  " Accepted
+
+        WHEN OTHERS.
+          APPEND VALUE #( %key = ls_travel_result-%key ) TO failed.
+
+          APPEND VALUE #( %key = ls_travel_result-%key
+                          %msg = new_message( id       = /dmo/cx_flight_legacy=>status_is_not_valid-msgid
+                                              number   = /dmo/cx_flight_legacy=>status_is_not_valid-msgno
+                                              v1       = ls_travel_result-overall_status
+                                              severity = if_abap_behv_message=>severity-error )
+                          %element-overall_status = if_abap_behv=>mk-on ) TO reported.
+      ENDCASE.
+
+    ENDLOOP.
+
+  ENDMETHOD.
+
+  METHOD set_status_completed.
+
+    " Modify in local mode: BO-related updates that are not relevant for authorization checks
+    MODIFY ENTITIES OF zi_travel_XXX IN LOCAL MODE
+           ENTITY travel
+              UPDATE FROM VALUE #( FOR key IN keys ( mykey = key-mykey
+                                                     overall_status = 'A' " Accepted
+                                                     %control-overall_status = if_abap_behv=>mk-on ) )
+           FAILED   failed
+           REPORTED reported.
+
+    " Read changed data for action result
+    READ ENTITIES OF zi_travel_XXX IN LOCAL MODE
+         ENTITY travel
+         FROM VALUE #( FOR key IN keys (  mykey = key-mykey
+                                          %control = VALUE #(
+                                            travel_id       = if_abap_behv=>mk-on
+                                            agency_id       = if_abap_behv=>mk-on
+                                            customer_id     = if_abap_behv=>mk-on
+                                            begin_date      = if_abap_behv=>mk-on
+                                            end_date        = if_abap_behv=>mk-on
+                                            booking_fee     = if_abap_behv=>mk-on
+                                            total_price     = if_abap_behv=>mk-on
+                                            currency_code   = if_abap_behv=>mk-on
+                                            overall_status  = if_abap_behv=>mk-on
+                                            description     = if_abap_behv=>mk-on
+                                            created_by      = if_abap_behv=>mk-on
+                                            created_at      = if_abap_behv=>mk-on
+                                            last_changed_by = if_abap_behv=>mk-on
+                                            last_changed_at = if_abap_behv=>mk-on
+                                          ) ) )
+         RESULT DATA(lt_travel).
+
+    result = VALUE #( FOR travel IN lt_travel ( mykey = travel-mykey
+                                                %param    = travel
+                                              ) ).
+
+  ENDMETHOD.
+
+  METHOD get_features.
+
+    READ ENTITY zi_travel_XXX FROM VALUE #( FOR keyval IN keys
+                                                      (  %key = keyval-%key
+                                                         %control-mykey = if_abap_behv=>mk-on
+                                                         %control-overall_status = if_abap_behv=>mk-on ) )
+                                RESULT DATA(lt_travel_result).
+
+
+    result = VALUE #( FOR ls_travel IN lt_travel_result
+                       ( %key = ls_travel-%key
+                         %features-%action-acceptTravel = COND #( WHEN ls_travel-overall_status = 'A'
+                                                                    THEN if_abap_behv=>fc-o-disabled ELSE if_abap_behv=>fc-o-enabled   )
+                      ) ).
+
+  ENDMETHOD.
+
+ENDCLASS.
+
+
+
+Behavior Definition: ZC_TRAVEL_XXX
+----------------------------------
+
+projection;
+
+define behavior for ZC_TRAVEL_XXX alias TravelProcessor
+use etag
+{
+  // scenario specific field control
+  field ( mandatory ) BeginDate, EndDate, CustomerID;
+
+  use create;
+  use update;
+  use delete;
+
+  use action acceptTravel;
+}
